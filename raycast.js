@@ -24,6 +24,15 @@ class Map
 		];
 	}
 
+	hasWallAt(x, y)
+	{
+		if ((x < 0 || WINDOW_WIDTH < x) || (y < 0 || WINDOW_HEIGHT < y))
+			return (true);
+		let mapGridIndexX = Math.floor(x / TILE_SIZE);
+		let mapGridIndexY = Math.floor(y / TILE_SIZE);
+		return (this.grid[mapGridIndexY][mapGridIndexX] != 0);
+	}
+
 	render()
 	{
 		for (let i = 0; i < MAP_NUM_ROWS; i++)
@@ -60,8 +69,14 @@ class Player
 		this.rotationAngle += this.turnDirection * this.rotationSpeed;
 
 		let moveStep = this.walkDirection * this.moveSpeed;
-		this.x += moveStep * Math.cos(this.rotationAngle);
-		this.y += moveStep * Math.sin(this.rotationAngle);
+		let newPlayerX = this.x + moveStep * Math.cos(this.rotationAngle);
+		let newPlayerY = this.y + moveStep * Math.sin(this.rotationAngle);
+
+		if (!grid.hasWallAt(newPlayerX, newPlayerY))
+		{
+			this.x = newPlayerX;
+			this.y = newPlayerY;
+		}
 	}
 
 	render()
