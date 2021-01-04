@@ -32,8 +32,8 @@ class Map
 			{
 				let tileX = j * TILE_SIZE;
 				let tileY = i * TILE_SIZE;
-				var tileColor = (this.grid[i][j] == 1 ? "#222" : "#fff");
-				stroke("#222");
+				var tileColor = (this.grid[i][j] == 1 ? '#222' : '#fff');
+				stroke('#222');
 				fill(tileColor);
 				rect(tileX, tileY, TILE_SIZE, TILE_SIZE);
 			}
