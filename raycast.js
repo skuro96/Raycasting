@@ -41,7 +41,34 @@ class Map
 	}
 }
 
+class Player
+{
+	constructor()
+	{
+		this.x = WINDOW_WIDTH / 2;
+		this.y = WINDOW_HEIGHT / 2;
+		this.radius = 3;
+		this.turnDirection = 0;
+		this.walkDirection = 0;
+		this.rotationAngle = Math.PI / 2;
+		this.moveSpeed = 2.0;
+		this.rotationSpeed = 2 * (Math.PI / 180);
+	}
+
+	update()
+	{
+		
+	}
+
+	render()
+	{
+		fill('red');
+		circle(this.x, this.y, this.radius);
+	}
+}
+
 let grid = new Map();
+let player = new Player();
 
 function setup()
 {
@@ -50,11 +77,12 @@ function setup()
 
 function update()
 {
-	// update all game objects
+	player.update();
 }
 
 function draw()
 {
 	update();
 	grid.render();
+	player.render();
 }
