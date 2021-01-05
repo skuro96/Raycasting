@@ -1,4 +1,4 @@
-const TILE_SIZE = 32;
+const TILE_SIZE = 64;
 const MAP_NUM_ROWS = 11;
 const MAP_NUM_COLS = 15;
 
@@ -7,7 +7,7 @@ const WINDOW_HEIGHT = MAP_NUM_ROWS * TILE_SIZE;
 
 const FOV_ANGLE = 60 * (Math.PI / 180);
 
-const WALL_STRIP_WIDTH = 30;
+const WALL_STRIP_WIDTH = 1;
 const NUM_RAYS = WINDOW_WIDTH / WALL_STRIP_WIDTH;
 
 class Map
@@ -89,13 +89,13 @@ class Player
 		noStroke();
 		fill('red');
 		circle(this.x, this.y, this.radius);
-		// stroke('red');
-		// line(
-		// 	this.x,
-		// 	this.y,
-		// 	this.x + Math.cos(this.rotationAngle) * 30,
-		// 	this.y + Math.sin(this.rotationAngle) * 30
-		// );
+		stroke('blue');
+		line(
+			this.x,
+			this.y,
+			this.x + Math.cos(this.rotationAngle) * TILE_SIZE,
+			this.y + Math.sin(this.rotationAngle) * TILE_SIZE
+		);
 	}
 }
 
@@ -107,6 +107,7 @@ class Ray
 		this.wallHitX = 0;
 		this.wallHitY = 0;
 		this.distance = 0;
+		this.wasHitVertical = false;
 
 		this.isRayFacingDown = 0 < this.rayAngle && this.rayAngle < Math.PI;
 		this.isRayFacingUp = !this.isRayFacingDown;
@@ -120,11 +121,12 @@ class Ray
 		let xintercept, yintercept;
 		let xstep, ystep;
 
-		let foundHorzWallHit = false;
-		let wallHitX = 0;
-		let wallHitY = 0;
+		
+		// 水平方向との交差判定
 
-		console.log('isRayFacingRight?', this.isRayFacingRight);
+		let foundHorzWallHit = false;
+		let horzWallHitX = 0;
+		let horzWallHitY = 0;
 
 		yintercept = Math.floor(player.y / TILE_SIZE) * TILE_SIZE;
 		yintercept += this.isRayFacingDown ? TILE_SIZE : 0;
@@ -141,20 +143,13 @@ class Ray
 		let nextHorzTouchX = xintercept;
 		let nextHorzTouchY = yintercept;
 
-		if (this.isRayFacingUp)
-			nextHorzTouchY--;
-
 		while ((0 <= nextHorzTouchX && nextHorzTouchX <= WINDOW_WIDTH) && (0 <= nextHorzTouchY && nextHorzTouchY <= WINDOW_HEIGHT))
 		{
-			if (grid.hasWallAt(nextHorzTouchX, nextHorzTouchY))
+			if (grid.hasWallAt(nextHorzTouchX, nextHorzTouchY - (this.isRayFacingUp ? 1 : 0)))
 			{
 				foundHorzWallHit = true;
-				wallHitX = nextHorzTouchX;
-				wallHitY = nextHorzTouchY;
-
-				stroke('red');
-				line(player.x, player.y, wallHitX, wallHitY);
-
+				horzWallHitX = nextHorzTouchX;
+				horzWallHitY = nextHorzTouchY;
 				break ;
 			}
 			else
@@ -163,6 +158,54 @@ class Ray
 				nextHorzTouchY += ystep;
 			}
 		}
+
+
+		// 垂直方向との交差判定
+
+		let foundVertWallHit = false;
+		let vertWallHitX = 0;
+		let vertWallHitY = 0;
+
+		xintercept = Math.floor(player.x / TILE_SIZE) * TILE_SIZE;
+		xintercept += this.isRayFacingRight ? TILE_SIZE : 0;
+
+		yintercept = player.y + (xintercept - player.x) * Math.tan(this.rayAngle);
+
+		xstep = TILE_SIZE;
+		xstep *= this.isRayFacingLeft ? -1 : 1;
+
+		ystep = TILE_SIZE * Math.tan(this.rayAngle);
+		ystep *= (this.isRayFacingUp && ystep > 0) ? -1 : 1;
+		ystep *= (this.isRayFacingDown && ystep < 0) ? -1 : 1;
+
+		let nextVertTouchX = xintercept;
+		let nextVertTouchY = yintercept;
+
+		while ((0 <= nextVertTouchX && nextVertTouchX <= WINDOW_WIDTH) && (0 <= nextVertTouchY && nextVertTouchY <= WINDOW_HEIGHT))
+		{
+			if (grid.hasWallAt(nextVertTouchX - (this.isRayFacingLeft ? 1 : 0), nextVertTouchY))
+			{
+				foundVertWallHit = true;
+				vertWallHitX = nextVertTouchX;
+				vertWallHitY = nextVertTouchY;
+				break ;
+			}
+			else
+			{
+				nextVertTouchX += xstep;
+				nextVertTouchY += ystep;
+			}
+		}
+
+
+		// 近い交差点はどちらか？
+		let horzHitDistance = (foundHorzWallHit) ? distanceBetweenPoints(player.x, player.y, horzWallHitX, horzWallHitY) : Number.MAX_VALUE;
+		let vertHitDistance = (foundVertWallHit) ? distanceBetweenPoints(player.x, player.y, vertWallHitX, vertWallHitY) : Number.MAX_VALUE;
+
+		this.wallHitX = (horzHitDistance < vertHitDistance) ? horzWallHitX : vertWallHitX;
+		this.wallHitY = (horzHitDistance < vertHitDistance) ? horzWallHitY : vertWallHitY;
+		this.distance = (horzHitDistance < vertHitDistance) ? horzHitDistance : vertHitDistance;
+		this.wasHitVertical = (vertHitDistance < horzHitDistance);
 	}
 
 	render()
@@ -171,8 +214,8 @@ class Ray
 		line(
 			player.x,
 			player.y,
-			player.x + Math.cos(this.rayAngle) * 30,
-			player.y + Math.sin(this.rayAngle) * 30
+			this.wallHitX,
+			this.wallHitY
 		);
 	}
 }
@@ -184,53 +227,34 @@ let rays = [];
 function keyPressed()
 {
 	if (keyCode == UP_ARROW)
-	{
 		player.walkDirection = 1;
-	}
 	else if (keyCode == DOWN_ARROW)
-	{
 		player.walkDirection = -1;
-	}
 	else if (keyCode == RIGHT_ARROW)
-	{
 		player.turnDirection = 1;
-	}
 	else if (keyCode == LEFT_ARROW)
-	{
 		player.turnDirection = -1;
-	}
 }
 
 function keyReleased()
 {
 	if (keyCode == UP_ARROW)
-	{
 		player.walkDirection = 0;
-	}
 	else if (keyCode == DOWN_ARROW)
-	{
 		player.walkDirection = 0;
-	}
 	else if (keyCode == RIGHT_ARROW)
-	{
 		player.turnDirection = 0;
-	}
 	else if (keyCode == LEFT_ARROW)
-	{
 		player.turnDirection = 0;
-	}
 }
 
 function castAllRays()
 {
 	let columnId = 0;
-
 	let rayAngle = player.rotationAngle - (FOV_ANGLE / 2);
-
 	rays = [];
 
-	// for (let i = 0; i < NUM_RAYS; i++)
-	for (let i = 0; i < 1; i++)
+	for (let i = 0; i < NUM_RAYS; i++)
 	{
 		let ray = new Ray(rayAngle);
 		ray.cast(columnId);
@@ -251,6 +275,11 @@ function normalizeAngle(angle)
 	return (angle);
 }
 
+function distanceBetweenPoints(x1, y1, x2, y2)
+{
+	return (Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)));
+}
+
 function setup()
 {
 	createCanvas(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -259,6 +288,7 @@ function setup()
 function update()
 {
 	player.update();
+	castAllRays();
 }
 
 function draw()
@@ -272,6 +302,4 @@ function draw()
 		ray.render();
 	}
 	player.render();
-
-	castAllRays();
 }
