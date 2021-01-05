@@ -89,13 +89,13 @@ class Player
 		noStroke();
 		fill('red');
 		circle(this.x, this.y, this.radius);
-		stroke('red');
-		line(
-			this.x,
-			this.y,
-			this.x + Math.cos(this.rotationAngle) * 30,
-			this.y + Math.sin(this.rotationAngle) * 30
-		)
+		// stroke('red');
+		// line(
+		// 	this.x,
+		// 	this.y,
+		// 	this.x + Math.cos(this.rotationAngle) * 30,
+		// 	this.y + Math.sin(this.rotationAngle) * 30
+		// );
 	}
 }
 
@@ -103,7 +103,62 @@ class Ray
 {
 	constructor(rayAngle)
 	{
-		this.rayAngle = rayAngle;
+		this.rayAngle = normalizeAngle(rayAngle);
+		this.wallHitX = 0;
+		this.wallHitY = 0;
+		this.distance = 0;
+
+		this.isRayFacingDown = 0 < this.rayAngle && this.rayAngle < Math.PI;
+		this.isRayFacingUp = !this.isRayFacingDown;
+
+		this.isRayFacingRight = this.rayAngle < 0.5 * Math.PI || 1.5 * Math.PI < this.rayAngle;
+		this.isRayFacingLeft = !this.isRayFacingRight;
+	}
+
+	cast(columnId)
+	{
+		let xintercept, yintercept;
+		let xstep, ystep;
+
+		let foundHorzWallHit = false;
+		let wallHitX = 0;
+		let wallHitY = 0;
+
+		console.log('isRayFacingRight?', this.isRayFacingRight);
+
+		yintercept = Math.floor(player.y / TILE_SIZE) * TILE_SIZE;
+		yintercept += this.isRayFacingDown ? TILE_SIZE : 0;
+
+		xintercept = player.x + (yintercept - player.y) / Math.tan(this.rayAngle);
+
+		ystep = TILE_SIZE;
+		ystep *= this.isRayFacingUp ? -1 : 1;
+
+		xstep = TILE_SIZE / Math.tan(this.rayAngle);
+		xstep *= (this.isRayFacingLeft && xstep > 0) ? -1 : 1;
+		xstep *= (this.isRayFacingRight && xstep < 0) ? -1 : 1;
+
+		let nextHorzTouchX = xintercept;
+		let nextHorzTouchY = yintercept;
+
+		if (this.isRayFacingUp)
+			nextHorzTouchY--;
+
+		while ((0 <= nextHorzTouchX && nextHorzTouchX <= WINDOW_WIDTH) && (0 <= nextHorzTouchY && nextHorzTouchY <= WINDOW_HEIGHT))
+		{
+			if (grid.hasWallAt(nextHorzTouchX, nextHorzTouchY))
+			{
+				foundHorzWallHit = true;
+				wallHitX = nextHorzTouchX;
+				wallHitY = nextHorzTouchY;
+				break ;
+			}
+			else
+			{
+				nextHorzTouchX += xstep;
+				nextHorzTouchY += ystep;
+			}
+		}
 	}
 
 	render()
@@ -114,7 +169,7 @@ class Ray
 			player.y,
 			player.x + Math.cos(this.rayAngle) * 30,
 			player.y + Math.sin(this.rayAngle) * 30
-		)
+		);
 	}
 }
 
@@ -162,11 +217,6 @@ function keyReleased()
 	}
 }
 
-function setup()
-{
-	createCanvas(WINDOW_WIDTH, WINDOW_HEIGHT);
-}
-
 function castAllRays()
 {
 	let columnId = 0;
@@ -175,9 +225,11 @@ function castAllRays()
 
 	rays = [];
 
-	for (let i = 0; i < NUM_RAYS; i++)
+	// for (let i = 0; i < NUM_RAYS; i++)
+	for (let i = 0; i < 1; i++)
 	{
 		let ray = new Ray(rayAngle);
+		ray.cast(columnId);
 		rays.push(ray);
 
 		rayAngle += FOV_ANGLE / NUM_RAYS;
@@ -185,10 +237,24 @@ function castAllRays()
 	}
 }
 
+function normalizeAngle(angle)
+{
+	angle = angle % (2 * Math.PI);
+	if (angle < 0)
+	{
+		angle += 2 * Math.PI;
+	}
+	return (angle);
+}
+
+function setup()
+{
+	createCanvas(WINDOW_WIDTH, WINDOW_HEIGHT);
+}
+
 function update()
 {
 	player.update();
-	castAllRays();
 }
 
 function draw()
@@ -202,4 +268,6 @@ function draw()
 		ray.render();
 	}
 	player.render();
+
+	castAllRays();
 }
