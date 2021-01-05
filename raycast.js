@@ -151,6 +151,10 @@ class Ray
 				foundHorzWallHit = true;
 				wallHitX = nextHorzTouchX;
 				wallHitY = nextHorzTouchY;
+
+				stroke('red');
+				line(player.x, player.y, wallHitX, wallHitY);
+
 				break ;
 			}
 			else
