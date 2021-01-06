@@ -126,7 +126,7 @@ class Ray
 		this.isRayFacingLeft = !this.isRayFacingRight;
 	}
 
-	cast(columnId)
+	cast()
 	{
 		let xintercept, yintercept;
 		let xstep, ystep;
@@ -209,13 +209,24 @@ class Ray
 
 
 		// 近い交差点はどちらか？
+
 		let horzHitDistance = (foundHorzWallHit) ? distanceBetweenPoints(player.x, player.y, horzWallHitX, horzWallHitY) : Number.MAX_VALUE;
 		let vertHitDistance = (foundVertWallHit) ? distanceBetweenPoints(player.x, player.y, vertWallHitX, vertWallHitY) : Number.MAX_VALUE;
 
-		this.wallHitX = (horzHitDistance < vertHitDistance) ? horzWallHitX : vertWallHitX;
-		this.wallHitY = (horzHitDistance < vertHitDistance) ? horzWallHitY : vertWallHitY;
-		this.distance = (horzHitDistance < vertHitDistance) ? horzHitDistance : vertHitDistance;
-		this.wasHitVertical = (vertHitDistance < horzHitDistance);
+		if (vertHitDistance < horzHitDistance)
+		{
+			this.wallHitX = vertWallHitX;
+			this.wallHitY = vertWallHitY;
+			this.distance = vertHitDistance;
+			this.wasHitVertical = true;
+		}
+		else
+		{
+			this.wallHitX = horzWallHitX;
+			this.wallHitY = horzWallHitY;
+			this.distance = horzHitDistance;
+			this.wasHitVertical = false;
+		}
 	}
 
 	render()
@@ -260,18 +271,16 @@ function keyReleased()
 
 function castAllRays()
 {
-	let columnId = 0;
 	let rayAngle = player.rotationAngle - (FOV_ANGLE / 2);
 	rays = [];
 
-	for (let i = 0; i < NUM_RAYS; i++)
+	for (let col = 0; col < NUM_RAYS; col++)
 	{
 		let ray = new Ray(rayAngle);
-		ray.cast(columnId);
+		ray.cast();
 		rays.push(ray);
 
 		rayAngle += FOV_ANGLE / NUM_RAYS;
-		columnId++;
 	}
 }
 
@@ -280,12 +289,15 @@ function render3DProjectedWalls()
 	for (var i = 0; i < NUM_RAYS; i++)
 	{
 		let ray = rays[i];
-		let rayDistance = ray.distance;
+		let correctWallDistance = ray.distance * Math.cos(ray.rayAngle - player.rotationAngle);
 		let distanceProjectionPlane = (WINDOW_WIDTH / 2) / Math.tan(FOV_ANGLE / 2);
 
-		let wallStripHeight = (TILE_SIZE / rayDistance) * distanceProjectionPlane;
+		let wallStripHeight = (TILE_SIZE / correctWallDistance) * distanceProjectionPlane;
 
-		fill('rgba(255, 255, 255, 1.0)');
+		let alpha = 1.0;
+		var color = ray.wasHitVertical ? 255 : 180;
+
+		fill('rgba(' + color + ',' + color + ',' + color + ',' + alpha + ')');
 		noStroke();
 		rect(
 			i * WALL_STRIP_WIDTH,
